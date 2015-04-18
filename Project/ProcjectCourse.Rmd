@@ -1,0 +1,322 @@
+---
+title: "Project Course of Practical Machine Learning"
+author: "Tran Ho Thanh Dong"
+date: "Monday, April 18, 2015"
+output: html_document
+---
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Purpose
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. The other variables are used to predict with. Some various models are used for predicting and Cross validation is used in the process. The accuracy and out of sample error is also analyzed. The report also present predicted result as applying the models to 20 different test cases. 
+
+## Load Libraries
+
+```{r, echo=TRUE, results='hide',message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+```
+
+## Data Processing
+
+### **Getting Data**
+
+- Due to the conenction problem with loading data from web for some kind of network, I used the method of loading data files from **working directory** into **trainfile** and **testfile** data sets
+
+```{r}
+trainfile<-read.csv("pml-training.csv")
+testfile<-read.csv("pml-testing.csv")
+dim(trainfile)
+dim(testfile)
+
+#trainfile <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv')
+#testfile <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv')
+
+```
+
+**The total predictors are `r dim(trainfile)[2]`**
+
+### **Cleaning data**
+
+- All predictors which are calculated based on other predictors such as **max, min, std, avg, var**... should be removed
+
+```{r}
+col_names<-names(trainfile)
+grepindex<-grep("max_|min_|avg_|stddev_|var_|amplitude_",col_names,value=FALSE)
+train_raw<-trainfile[-grepindex]
+test_raw<-testfile[-grepindex]
+
+```
+
+- The first 7 columns which are not predictors to predict the **"classe"** variable should be removed
+
+```{r}
+head(train_raw[,1:7])
+train_raw<-train_raw[,-c(1:7)]
+test_raw<-test_raw[,-c(1:7)]
+```
+
+##### The total predictors now are `r dim(train_raw)[2]`
+
+- There are still predictors that have very few unique values relative to the number of samples and the ratio of the frequency of the most common value to the frequency of the second most common value is large. The function **nearZeroVar** is used to locate those predictors and finally, they should be removed out of **the train_raw/test_raw sets**
+
+
+```{r}
+NZVindex <- nearZeroVar(train_raw, saveMetrics=FALSE)
+training<-train_raw[-NZVindex]
+testing<-test_raw[-NZVindex]
+dim(training)
+```
+
+The results are data sets with **`r dim(training)[2]`** predictors which are:
+
+```{r}
+names(training)
+```
+
+## K-Fold Cross-Validation
+
+### Number of folds to patrition the training set
+
+```{r}
+fold<-10
+```
+
+- **The training set** is very big with dimension of **`r dim(training)[1]`** x **`r dim(training)[2]`**. In order to reduce variability. instead of  performing the **Machine Learning Algorithm** on the entire training set, it is randomly partitioned into `r fold` equal size subsamples.
+
+- Multiple round of cross-validation are performed using each of above partritions, and the validation results are averaged over the rounds
+
+```{r}
+set.seed(1967)
+folds <- createFolds(training$classe, k = fold, list = TRUE, returnTrain = FALSE)
+
+sample_list<-list()
+
+for(i in 1:fold){
+    sample_list[[i]]<-training[folds[[i]],]
+}
+
+```
+
+### Partritioning the folds of training set
+
+- The folds are pattritioned into **60%** for training sets and **40%** for testing sets
+
+- Store the training and testing sets in list variables called **training_list** and **testing_list**
+
+```{r}
+training_list<-list()
+testing_list<-list()
+
+for(i in 1:fold){
+    set.seed(1967)
+    index <- createDataPartition(y=sample_list[[i]]$classe, p=0.6, list=FALSE)
+    training_list[[i]] <- sample_list[[i]][index, ]
+    testing_list[[i]] <- sample_list[[i]][-index, ]
+}
+
+```
+
+
+## Machine Learning Algorithm
+
+- The Machine Learning Algorithms **Decision Tree** and **Random Forest** which are done both with and without **preprocessing** are applied to the training samples in the **training_list**. The fit models are stored either in a list variable called **fit_method_list** or **fit_preprocessing_method_list** if the preprocessing is done in the model
+
+- The results of predicting on the testing samples the **testing_list** are stored either in a list variable called **predict_method_list** or **predict_preprocessing_method_list** if the preprocessin is done in the model
+
+- The confusionMatrix of predicting on the testing samples the **testing_list** are stored either in a list variable called **confusion_method_list** or **confusion_preprocessing_method_list** if the preprocessin is done in the model
+
+- The accuracy values of confusionMatrix for each model are stored either in a vector variable called **accuracy_method_list** or **accuracy_preprocessing_method_list** if the preprocessin is done in the model
+
+
+### Decision Tree
+
+- **Without Preprocessing**
+
+```{r}
+fit_tree_list<-list()
+predict_tree_list<-list()
+confusion_tree_list<-list()
+accuracy_tree_list<-numeric()
+
+for(i in 1:fold){
+    set.seed(1967)
+    fit_tree_list[[i]] <-  train(classe ~ ., data=training_list[[i]], method="rpart", trControl=trainControl(method = "cv", number = 4))
+    predict_tree_list[[i]]<-predict(fit_tree_list[[i]], testing_list[[i]])
+    confusion_tree_list[[i]]<-confusionMatrix(predict_tree_list[[i]], testing_list[[i]]$classe)
+    accuracy_tree_list[[i]]<-confusion_tree_list[[i]]$overall[1]
+}
+
+```
+
+- **With Preprocessing**
+
+```{r}
+
+fit_preprocess_tree_list<-list()
+predict_preprocess_tree_list<-list()
+confusion_preprocess_tree_list<-list()
+accuracy_preprocess_tree_list<-numeric()
+
+for(i in 1:fold){
+    set.seed(1967)
+    fit_preprocess_tree_list[[i]] <-  train(classe ~ ., data=training_list[[i]], method="rpart", preProcess=c("center", "scale"), trControl=trainControl(method = "cv", number = 4))
+    predict_preprocess_tree_list[[i]]<-predict(fit_preprocess_tree_list[[i]], testing_list[[i]])
+    confusion_preprocess_tree_list[[i]]<-confusionMatrix(predict_preprocess_tree_list[[i]], testing_list[[i]]$classe)
+    accuracy_preprocess_tree_list[[i]]<-confusion_preprocess_tree_list[[i]]$overall[1]
+}
+
+```
+
+### Random Forest
+
+- **Without Preprocessing**
+
+```{r}
+
+fit_rf_list<-list()
+predict_rf_list<-list()
+confusion_rf_list<-list()
+accuracy_rf_list<-numeric()
+
+for(i in 1:fold){
+    set.seed(1967)
+    fit_rf_list[[i]] <-  train(classe ~ ., data=training_list[[i]], method="rf", trControl=trainControl(method = "cv", number = 4))
+    predict_rf_list[[i]]<-predict(fit_rf_list[[i]], testing_list[[i]])
+    confusion_rf_list[[i]]<-confusionMatrix(predict_rf_list[[i]], testing_list[[i]]$classe)
+    accuracy_rf_list[[i]]<-confusion_rf_list[[i]]$overall[1]
+}
+```
+
+- **With Preprocessing**
+
+```{r}
+fit_preprocess_rf_list<-list()
+predict_preprocess_rf_list<-list()
+confusion_preprocess_rf_list<-list()
+accuracy_preprocess_rf_list<-numeric()
+
+for(i in 1:fold){
+    set.seed(1967)
+    fit_preprocess_rf_list[[i]] <-  train(classe ~ ., data=training_list[[i]], method="rf", preProcess=c("center", "scale"), trControl=trainControl(method = "cv", number = 4))
+    predict_preprocess_rf_list[[i]]<-predict(fit_preprocess_rf_list[[i]], testing_list[[i]])
+    confusion_preprocess_rf_list[[i]]<-confusionMatrix(predict_preprocess_rf_list[[i]], testing_list[[i]]$classe)
+    accuracy_preprocess_rf_list[[i]]<-confusion_preprocess_rf_list[[i]]$overall[1]
+}
+
+```
+
+#### The accuracy values and its mean values of each model
+
+1- *Decision tree without preprocessing*
+
+```{r}
+accuracy_tree_list
+mean(accuracy_tree_list)
+```
+
+2- *Decision tree with preprocessing*
+
+```{r}
+accuracy_preprocess_tree_list
+mean(accuracy_preprocess_tree_list)
+```
+
+3- *Random Forest without preprocessing*
+
+```{r}
+accuracy_rf_list
+mean(accuracy_rf_list)
+```
+
+4- *Random Forest with preprocessing*
+
+```{r}
+accuracy_preprocess_rf_list
+mean(accuracy_preprocess_rf_list)
+```
+
+- The results show that the model built based on algorithm **Random Forest** without preprocessing has the highest mean of accuracy values.
+
+- Thus, our model is built based on the algorithm **Random Forest** without preprocessing
+
+####  The out of sample error of each model
+
+1- *Decision tree without preprocessing*
+
+```{r}
+1-mean(accuracy_tree_list)
+```
+
+2- *Decision tree with preprocessing*
+
+```{r}
+1-mean(accuracy_preprocess_tree_list)
+```
+
+3- *Random Forest without preprocessing*
+
+```{r}
+1-mean(accuracy_rf_list)
+```
+
+4- *Random Forest with preprocessing*
+
+```{r}
+1-mean(accuracy_preprocess_rf_list)
+```
+
+## Conclussion
+
+- The model which is built based on the agorithm Random Forest without preprocessing has the highest accuracy. It means the out of sampe error of thois model is the lowest. Thus, the out of sample error should be **`r 1-mean(accuracy_rf_list)`**
+
+## Submmision
+
+- Apply the models built for `r fold` folds based on algorithm **Random Forest** without preprocessing to the 20 test cases available in the test data provided
+
+```{r}
+predict<-list()
+for(i in 1:fold){
+  predict[[i]]<-predict(fit_rf_list[[i]], testing)
+}
+```
+
+- The results of predicting **classe** from `r fold` above models are
+
+```{r}
+options(width = 100)
+for(i in 1:fold){
+   print(as.character(predict[[i]]))     
+}
+```
+
+- Because, We have 02 tries for each letter in predicted **classe**, 02 letters that appear the most at each position predicted by the `r fold` above models should be chosen for submission. Thus, the result should be:
+
+"**B or C**"" "**A**" "**B or C**" "**A**" "**A**" "**E**" "**D**" "**D or B**" "**A**" "**A**" "**C or B**" "**C**" "**B**" "**A**" "**E**" "**E**" "**A**" "**B or D**" "**A or B**" "**B**"
+
+
+## Appendix: 04 plots
+
+- 01 PanelPlot for Classification Tree of models for the first four folds of the training set
+
+```{r fig.width=10, fig.height=7}
+par(mfrow=c(2,2))
+for(i in 1:4)
+ fancyRpartPlot(fit_tree_list[[i]]$finalModel)
+```
+
+- 3 plots for models built based on algorithm Random Forest for the first four folds of the training set
+
+```{r fig.width=8, fig.height=5}
+
+plot(fit_rf_list[[1]],log="y")
+plot(fit_rf_list[[2]],log="y")
+plot(fit_rf_list[[3]],log="y")
+
+```

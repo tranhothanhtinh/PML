@@ -1,8 +1,8 @@
 ---
-title: "Project Course of Practical Machine Learning"
+title: "Project Assignment of Practical Machine Learning Course"
 author: "Tran Ho Thanh Dong"
 date: "Monday, April 18, 2015"
-output: html_document
+output: word_document
 ---
 
 ## Background
@@ -82,7 +82,7 @@ names(training)
 
 ## K-Fold Cross-Validation
 
-### Number of folds to patrition the training set
+### Number of folds to partition the training set
 
 ```{r}
 fold<-10
@@ -90,7 +90,7 @@ fold<-10
 
 - **The training set** is very big with dimension of **`r dim(training)[1]`** x **`r dim(training)[2]`**. In order to reduce variability. instead of  performing the **Machine Learning Algorithm** on the entire training set, it is randomly partitioned into `r fold` equal size subsamples.
 
-- Multiple round of cross-validation are performed using each of above partritions, and the validation results are averaged over the rounds
+- Multiple round of cross-validation are performed using each of above partitions, and the validation results are averaged over the rounds
 
 ```{r}
 set.seed(1967)
@@ -106,7 +106,7 @@ for(i in 1:fold){
 
 ### Partritioning the folds of training set
 
-- The folds are pattritioned into **60%** for training sets and **40%** for testing sets
+- The folds are partitioned into **60%** for training sets and **40%** for testing sets
 
 - Store the training and testing sets in list variables called **training_list** and **testing_list**
 
@@ -128,11 +128,11 @@ for(i in 1:fold){
 
 - The Machine Learning Algorithms **Decision Tree** and **Random Forest** which are done both with and without **preprocessing** are applied to the training samples in the **training_list**. The fit models are stored either in a list variable called **fit_method_list** or **fit_preprocessing_method_list** if the preprocessing is done in the model
 
-- The results of predicting on the testing samples the **testing_list** are stored either in a list variable called **predict_method_list** or **predict_preprocessing_method_list** if the preprocessin is done in the model
+- The results of predicting on the testing samples the **testing_list** are stored either in a list variable called **predict_method_list** or **predict_preprocessing_method_list** if the preprocessing is done in the model
 
-- The confusionMatrix of predicting on the testing samples the **testing_list** are stored either in a list variable called **confusion_method_list** or **confusion_preprocessing_method_list** if the preprocessin is done in the model
+- The confusionMatrix of predicting on the testing samples the **testing_list** are stored either in a list variable called **confusion_method_list** or **confusion_preprocessing_method_list** if the preprocessing is done in the model
 
-- The accuracy values of confusionMatrix for each model are stored either in a vector variable called **accuracy_method_list** or **accuracy_preprocessing_method_list** if the preprocessin is done in the model
+- The accuracy values of confusionMatrix for each model are stored either in a vector variable called **accuracy_method_list** or **accuracy_preprocessing_method_list** if the preprocessing is done in the model
 
 
 ### Decision Tree
@@ -217,6 +217,7 @@ for(i in 1:fold){
 1- *Decision tree without preprocessing*
 
 ```{r}
+options(width = 110)
 accuracy_tree_list
 mean(accuracy_tree_list)
 ```
@@ -224,6 +225,7 @@ mean(accuracy_tree_list)
 2- *Decision tree with preprocessing*
 
 ```{r}
+options(width = 110)
 accuracy_preprocess_tree_list
 mean(accuracy_preprocess_tree_list)
 ```
@@ -231,6 +233,7 @@ mean(accuracy_preprocess_tree_list)
 3- *Random Forest without preprocessing*
 
 ```{r}
+options(width = 110)
 accuracy_rf_list
 mean(accuracy_rf_list)
 ```
@@ -238,6 +241,7 @@ mean(accuracy_rf_list)
 4- *Random Forest with preprocessing*
 
 ```{r}
+options(width = 110)
 accuracy_preprocess_rf_list
 mean(accuracy_preprocess_rf_list)
 ```
@@ -274,7 +278,7 @@ mean(accuracy_preprocess_rf_list)
 
 ## Conclussion
 
-- The model which is built based on the agorithm Random Forest without preprocessing has the highest accuracy. It means the out of sampe error of thois model is the lowest. Thus, the out of sample error should be **`r 1-mean(accuracy_rf_list)`**
+- The model which is built based on the agorithm Random Forest without preprocessing has the highest accuracy. It means the out of sampe error of this model is the lowest. Thus, the out of sample error should be **`r 1-mean(accuracy_rf_list)`**
 
 ## Submmision
 
